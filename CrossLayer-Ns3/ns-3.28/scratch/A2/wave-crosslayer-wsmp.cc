@@ -15,13 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * * Author: Jenny sheng <qdsheng@gmail.com>
+*
+ * Author: Jenny sheng <qdsheng@gmail.com>
  *
  *
- *This project simulate the PHY-MAC-NET interaction cross layer design to increase throughput  Node 1 advertising BSM to node 0:
+ *This project simulate the PHY-MAC-NET interaction cross layer design to increase throughput  Node 3 advertising BSM to node 0:
  *Physical layer parameters
  *1.the transmission power, data rate
- *2.Channel capacity, PDR, BitErrorRate, Propagation loss-> no channel switching because of the emergency bsm
+ *2.Channel capacity, PDR, BitMeterErrorRate, Propagation loss-> no channel switching because of the emergency bsm
  *3.Rayleigh fading, low signal to noise levels
  *Mac layer task: scheduling the packet delivery, packet segmentation, packet collisions
  *Net layer task: routing,  congestion control
@@ -35,7 +36,7 @@
  * /src/mobility/examples/ns2-mobility-trace.cc
  * /src/wave/examples/wave-simple-80211p.cc
  *
- *
+ *320byte
  *
  *
  */
@@ -49,10 +50,9 @@
 #include "../../build/ns3/callback.h"
 #include "../../build/ns3/channel-manager.h"
 #include "../../build/ns3/channel-scheduler.h"
-#include "../../build/ns3/command-line.h"
 #include "../../build/ns3/constant-acceleration-mobility-model.h"
+#include "../../build/ns3/double.h"
 #include "../../build/ns3/event-id.h"
-#include "../../build/ns3/event-impl.h"
 #include "../../build/ns3/log.h"
 #include "../../build/ns3/log-macros-disabled.h"
 #include "../../build/ns3/mac48-address.h"
@@ -66,6 +66,7 @@
 #include "../../build/ns3/simulator.h"
 #include "../../build/ns3/string.h"
 #include "../../build/ns3/type-id.h"
+#include "../../build/ns3/uinteger.h"
 #include "../../build/ns3/vector.h"
 #include "../../build/ns3/wave-helper.h"
 #include "../../build/ns3/wave-mac-helper.h"
@@ -78,12 +79,25 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WaveWsmp");
 
+
+int BasSpeed = 10;
+int MaxNodeNbr = 2;
+int speedChangeCoef = 20;
+Ptr<ConstantAccelerationMobilityModel> mob;
+int basicpacketSize = 100;
+int emergencypacketsize = 200;
+int simTime = 11;
+
+double txp = 7.5;
+
 void ReceivePacket(Ptr<WsmpSocket> socket) {
+
 	while (socket->Recv()) {
 		NS_LOG_UNCOND("Received one packet!");
+
 	}
 }
-
+//trafik throughtput generation-----------------------------------------
 static void GenerateTraffic(Ptr<WsmpSocket> socket, uint32_t pktSize,
 		uint32_t pktCount, Time pktInterval) {
 	if (pktCount > 0) {
@@ -98,25 +112,35 @@ static void GenerateTraffic(Ptr<WsmpSocket> socket, uint32_t pktSize,
 int main(int argc, char *argv[]) {
 	std::string phyMode("OfdmRate6MbpsBW10MHz");
 	uint32_t packetSize = 1000; // bytes
-	uint32_t numPackets = 1;
-	double interval = 1.0; // seconds
+	uint32_t numPackets = 100;
+	double interval = 1; // seconds
 	bool verbose = false;
 
-	CommandLine cmd;
-
-	cmd.AddValue("phyMode", "Wifi Phy mode", phyMode);
-	cmd.AddValue("packetSize", "size of application packet sent", packetSize);
-	cmd.AddValue("numPackets", "number of packets generated", numPackets);
-	cmd.AddValue("interval", "interval (seconds) between packets", interval);
-	cmd.AddValue("verbose", "turn on all WifiNetDevice log components",
-			verbose);
-	cmd.Parse(argc, argv);
 	// Convert to time object
 	Time interPacketInterval = Seconds(interval);
-
+	//create nodes---------------------------------------------------------
 	NodeContainer nodes;
-	nodes.Create(2);
+	nodes.Create(MaxNodeNbr);
+	MobilityHelper mobility;
+	mobility.SetPositionAllocator("ns3::GridPositionAllocator", "MinX",
+			DoubleValue(00.0), "MinY", DoubleValue(100.0), "DeltaX",
+			DoubleValue(135.0), "DeltaY", DoubleValue(00.0), "GridWidth",
+			UintegerValue(2), "LayoutType", StringValue("ColumnFirst"));
+	mobility.SetMobilityModel("ns3::ConstantAccelerationMobilityModel");
+	mobility.Install(nodes);
 
+	for (int i = 0; i < MaxNodeNbr; i++) {
+		mob = nodes.Get(i)->GetObject<ConstantAccelerationMobilityModel>();
+		int currentAcc = BasSpeed+(i * speedChangeCoef);
+		int currentSpeed=BasSpeed-(i*speedChangeCoef);
+		mob->SetVelocityAndAcceleration(Vector(currentSpeed, 00.00, 00.00),
+				Vector(currentAcc, 00.00, 00.00));
+		std::cout << "Node " << i << " velocity: " << mob->GetVelocity()<< std::endl;
+		std::cout << "Node " << i << " acceleration: " << currentAcc<< std::endl;
+
+	}
+//End create nodes---------------------------------------------------------------------------
+//channel---------------------------------------
 	YansWifiChannelHelper waveChannel = YansWifiChannelHelper::Default();
 	YansWavePhyHelper wavePhy = YansWavePhyHelper::Default();
 	wavePhy.SetChannel(waveChannel.Create());
@@ -146,44 +170,34 @@ int main(int argc, char *argv[]) {
 	// Tracing
 	wavePhy.EnablePcap("wave-simple-wsmp", devices);
 
-	MobilityHelper mobility;
-	mobility.SetMobilityModel("ns3::ConstantAccelerationMobilityModel");
-	mobility.Install(nodes);
-	Ptr<ConstantAccelerationMobilityModel> mob = nodes.Get(0)->GetObject<
-			ConstantAccelerationMobilityModel>();
-	mob->SetVelocityAndAcceleration(Vector(60, 00.00, 00.00),
-			Vector(10, 00.00, 00.00));
-
-	std::cout << "Node " << "0" << " velocity: " << mob->GetVelocity()
-			<< std::endl;
-	Ptr<ConstantAccelerationMobilityModel> mob2 = nodes.Get(1)->GetObject<
-			ConstantAccelerationMobilityModel>();
-	mob2->SetVelocityAndAcceleration(Vector(30, 00.00, 00.00),
-			Vector(15, 00.00, 00.00));
-	std::cout << "Node " << "1" << " velocity: " << mob2->GetVelocity()
-			<< std::endl;
-
+//end channel--------------------------------------------------------------------------
+//create sockets for all the nodes as receiver-----------------------------------------
 
 	TypeId tid = TypeId::LookupByName("ns3::WsmpSocketFactory");
-	Ptr<WsmpSocket> recvSink = WsmpSocket::CreateSocket(nodes.Get(0), tid);
-	Psid psid = Psid(0x80, 0x01);
-	recvSink->Bind(psid);
-	recvSink->SetRecvCallback(MakeCallback(&ReceivePacket));
+	for (int i = 0; i < MaxNodeNbr; i++) {
+		Ptr<WsmpSocket> recvSink = WsmpSocket::CreateSocket(nodes.Get(i), tid);	//original is node 0
+		Psid psid = Psid(0x80, 0x01);
+		recvSink->Bind(psid);
+		recvSink->SetRecvCallback(MakeCallback(&ReceivePacket));
+//create source for all the nodes as sender---------------------------------------------
+		Ptr<WsmpSocket> source = WsmpSocket::CreateSocket(nodes.Get(i), tid);//original is node 1
+		source->Connect(Mac48Address::GetBroadcast(), psid);
+		for (int j = 1; j < simTime; j += j) {
+			Simulator::ScheduleWithContext(nodes.Get(i)->GetId(), Seconds(j),
+					&GenerateTraffic, source, packetSize, numPackets,
+					interPacketInterval);
+		}
 
-	Ptr<WsmpSocket> source = WsmpSocket::CreateSocket(nodes.Get(1), tid);
-	source->Connect(Mac48Address::GetBroadcast(), psid);
-	for (int j = 1; j < 10; j += j) {
-		Simulator::ScheduleWithContext(nodes.Get(1)->GetId(), Seconds(j),
-				&GenerateTraffic, source, packetSize, numPackets,
-				interPacketInterval);
 	}
+
 	AnimationInterface anim("Crosslayer.xml");
-	anim.UpdateNodeSize(1, 40, 20);
-	anim.UpdateNodeSize(0, 40, 20);
-	Simulator::Stop(Seconds(10.0));
+	for (int i = 0; i < MaxNodeNbr; i++) {
+		anim.UpdateNodeSize(i, 70, 70);
+	}
+
+	Simulator::Stop(Seconds(simTime));
 	Simulator::Run();
 	Simulator::Destroy();
 
 	return 0;
 }
-
