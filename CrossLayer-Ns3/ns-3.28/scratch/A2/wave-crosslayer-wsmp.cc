@@ -196,7 +196,7 @@ void CheckThroughput() {
 	uint32_t totalAppBytes = cumulativeWaveBsmBytes;
 	uint32_t totalPhyBytes = GetPhyTxByte();
 	// mac-phy-oh = (total-phy-bytes - total-app-bytes) / total-phy-bytes
-	double mac_phy_oh = 1.0;
+	double mac_phy_oh = 8.0;//Can buss message 8 bytes
 	if (totalPhyBytes > 0) {
 		mac_phy_oh = (double) (totalPhyBytes - totalAppBytes)
 				/ (double) totalPhyBytes;
@@ -387,7 +387,6 @@ int main(int argc, char *argv[]) {
 	Packet::EnablePrinting();
 	std::cout << ("\n Enter a transmission power: ") << std::endl;
 	scanf("%d", &m_txp);
-	//if(receivedPackets)
 	run(m_txp);
 
 	return 0;
