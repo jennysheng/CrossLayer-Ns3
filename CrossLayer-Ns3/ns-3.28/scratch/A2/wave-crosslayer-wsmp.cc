@@ -132,10 +132,16 @@ int m_gpsAccuracyNs=10;
 std::vector <double>  m_txSafetyRanges;
 int chAccessMode =0;
 int m_txMaxDelayMs=10;
-/*OfdmRate6Mbps OfdmRate9Mbps OfdmRate12Mbps OfdmRate18Mbps OfdmRate24Mbps OfdmRate36Mbps OfdmRate48Mbps
-OfdmRate54Mbps*/
+/* OfdmRate3MbpsBW10MHz
+  OfdmRate4_5MbpsBW10MHz
+  OfdmRate6MbpsBW10MHz
+  OfdmRate9MbpsBW10MHz
+  OfdmRate12MbpsBW10MHz
+  OfdmRate18MbpsBW10MHz
+  OfdmRate24MbpsBW10MHz
+  OfdmRate27MbpsBW10MHz*/
 //std::string phyMode("OfdmRate6MbpsBW10MHz");
-std::string phyMode("OfdmRate12MbpsBW10MHz");
+std::string phyMode("OfdmRate27MbpsBW10MHz");
 uint32_t pktSize = 320; // bytes
 uint32_t pktNbr = 10; //
 
